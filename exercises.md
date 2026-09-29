@@ -6,7 +6,7 @@
 > Cách trả lời: thay dòng `> *Câu trả lời của bạn*` bằng câu trả lời.
 > `grade.py` đếm số câu đã trả lời (15 điểm cho 10 câu).
 >
-> Họ và tên: ..........................  Mã học viên: ..........................
+> Họ và tên: Nguyễn Thị Thùy Dương  Mã học viên: 2A202602905
 
 ---
 
@@ -16,7 +16,12 @@ Trong `Settings`, `agent_api_key` không có giá trị mặc định nên app c
 khi khởi động nếu thiếu biến môi trường. Hãy mô tả một tình huống cụ thể mà
 việc "chết sớm" này cứu bạn, so với việc để mặc định `"changeme"`.
 
-> *Câu trả lời của bạn*
+> Khi deploy ứng dụng lên cloud, nếu tôi quên cấu hình `AGENT_API_KEY` mà code
+> có khóa mặc định `"changeme"`, ứng dụng vẫn khởi động và endpoint `/ask` có
+> thể bị người khác gọi bằng khóa dễ đoán đó, làm phát sinh chi phí. Việc không
+> đặt giá trị mặc định khiến ứng dụng báo lỗi ngay khi khởi động, giúp tôi phát
+> hiện cấu hình thiếu trước khi service nhận request và tránh vô tình công khai
+> API.
 
 ---
 
@@ -26,7 +31,17 @@ Chạy service và gọi `/ask` vài lần. Dán một dòng log JSON bạn thu 
 nêu **hai** việc bạn làm được với dòng log đó mà `print("đã trả lời xong")`
 không làm được.
 
-> *Câu trả lời của bạn*
+> Dòng log JSON tôi thu được khi kiểm tra CP1:
+>
+> ```json
+> {"event": "cp1_verified", "level": "info", "timestamp": "2026-09-29T04:35:21.655352+00:00", "service": "day12-agent"}
+> ```
+>
+> Với log có cấu trúc này, tôi có thể lọc và đếm các bản ghi theo `event`,
+> `level` hoặc `service` thay vì phải tìm trong câu chữ tự do. Tôi cũng có thể
+> dùng `timestamp` để sắp xếp sự kiện, thống kê số lần xảy ra trong một khoảng
+> thời gian và thiết lập cảnh báo tự động. Dòng `print("đã trả lời xong")` không
+> cung cấp các trường dữ liệu ổn định để thực hiện hai việc đó.
 
 ---
 
