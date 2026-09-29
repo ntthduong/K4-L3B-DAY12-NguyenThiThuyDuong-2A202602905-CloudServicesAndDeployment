@@ -141,7 +141,14 @@ nhưng cost guard phải chặn, và một tình huống ngược lại.
 Nếu gộp hai endpoint làm một và cho nó kiểm tra Redis, chuyện gì xảy ra với cụm
 3 container khi Redis mất kết nối 30 giây? Trả lời theo đúng thứ tự sự kiện.
 
-> *Câu trả lời của bạn*
+> Nếu gộp `/health` và `/ready` rồi cho endpoint đó kiểm tra Redis, khi Redis
+> mất kết nối thì cả ba container cùng trả 503. Orchestrator sẽ hiểu rằng cả ba
+> process bị lỗi và lần lượt restart chúng, dù bản thân ứng dụng vẫn còn sống.
+> Trong lúc Redis chưa phục hồi, các container vừa khởi động lại vẫn tiếp tục
+> báo lỗi và có thể bị restart thêm lần nữa. Kết quả là sự cố 30 giây của một
+> dependency biến thành thời gian gián đoạn của toàn bộ cụm. Tách riêng hai
+> probe cho phép `/health` tiếp tục báo process còn sống, còn `/ready` chỉ rút
+> các instance chưa phục vụ được ra khỏi load balancer mà không restart chúng.
 
 ---
 
@@ -151,7 +158,14 @@ Chạy `docker compose up --scale agent=3` rồi gọi `/ask` nhiều lần vớ
 `X-User-Id`. Quan sát `history_length` trong response. Nếu lịch sử được lưu
 trong một dict Python thay vì Redis, bạn sẽ thấy con số đó thay đổi thế nào?
 
-> *Câu trả lời của bạn*
+> Tôi chạy ba container agent lần lượt trên các cổng 8000, 8001 và 8002, cùng
+> kết nối tới một Redis, rồi gửi năm request với cùng `X-User-Id`. Dù request
+> đi qua các container khác nhau, `history_length` tăng đều `0, 2, 4, 6, 8`,
+> chứng minh mọi instance cùng đọc một lịch sử trong Redis. Nếu dùng dict
+> Python, mỗi container sẽ có một bản lịch sử riêng: lần đầu đi vào từng
+> container thường đều trả 0, và con số chỉ tăng khi request quay lại đúng
+> container đã xử lý trước đó. Người dùng vì thế sẽ thấy lịch sử tăng không
+> liên tục hoặc có vẻ bị mất ngẫu nhiên.
 
 ---
 
