@@ -57,12 +57,17 @@ docker images | grep agent
 
 | Bản | Dung lượng |
 |-----|-----------|
-| 1 stage (bản đầu) | ... MB |
-| Multi-stage | ... MB |
+| 1 stage (bản đầu) | 1.7 GB |
+| Multi-stage | 271 MB |
 
 Giải thích: phần dung lượng chênh lệch đó là những gì?
 
-> *Câu trả lời của bạn*
+> Tôi build lại Dockerfile một stage ban đầu bằng `python:3.11` và đo được image
+> 1.7 GB; image multi-stage dùng `python:3.11-slim` có kích thước 271 MB. Phần
+> chênh lệch chủ yếu đến từ base image Python đầy đủ chứa nhiều gói hệ thống,
+> công cụ và thành phần không cần cho runtime. Với multi-stage, stage cuối chỉ
+> nhận các dependency đã cài từ builder cùng mã nguồn cần chạy, không mang theo
+> toàn bộ môi trường build và các file trung gian.
 
 ---
 
@@ -72,7 +77,14 @@ Sửa một ký tự trong `app/main.py` rồi build lại. Với Dockerfile c�
 layer nào được dùng lại từ cache, layer nào phải chạy lại? Nếu bạn đặt
 `COPY . .` lên trước `RUN pip install` thì kết quả khác thế nào?
 
-> *Câu trả lời của bạn*
+> Khi build lại mà source chưa đổi, Docker báo `CACHED` cho các layer cài
+> dependency, copy source và tạo user. Với thứ tự hiện tại, nếu tôi sửa một ký
+> tự trong `app/main.py`, các layer copy `requirements.txt`, chạy `pip install`
+> và copy dependency từ builder vẫn được dùng lại; layer `COPY app ./app` và
+> các layer runtime đứng sau nó phải tạo lại. Nếu đặt `COPY . .` trước
+> `RUN pip install`, thay đổi nhỏ trong source sẽ làm mất cache của layer copy,
+> khiến `pip install` phải tải và cài lại toàn bộ thư viện dù
+> `requirements.txt` không thay đổi.
 
 ---
 
@@ -82,7 +94,14 @@ Container mặc định chạy bằng root. Mô tả chuỗi sự kiện dẫn t
 trong code Python của bạn" tới "kẻ tấn công có quyền cao trên máy host", và
 lệnh `USER` cắt đứt chuỗi đó ở chỗ nào.
 
-> *Câu trả lời của bạn*
+> Nếu ứng dụng Python có lỗ hổng cho phép thực thi lệnh, kẻ tấn công có thể chạy
+> lệnh với quyền của process trong container. Khi container chạy bằng root,
+> người đó có quyền root trong container và có thể lợi dụng cấu hình sai, volume
+> mount nhạy cảm hoặc lỗ hổng của container runtime để tác động tới host với
+> quyền cao. Lệnh `USER appuser` làm process chỉ chạy với UID 10001 không đặc
+> quyền, nên ngay từ bước thực thi lệnh qua lỗ hổng, quyền của kẻ tấn công đã bị
+> giới hạn. Tôi đã kiểm tra image và nhận được
+> `uid=10001(appuser) gid=10001(appuser)`.
 
 ---
 
